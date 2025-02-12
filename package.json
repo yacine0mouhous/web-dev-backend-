@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "start": "node dist/index.js",
-  "dev": "nodemon --ext ts --exec ts-node src/index.ts",
-  "build": "tsc"
+    "start": "node dist/index.js",
+    "dev": "nodemon --ext ts --exec ts-node src/index.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +16,9 @@
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "mongodb": "^5.9.2",
+    "typeorm": "^0.3.20"
   }
 }
