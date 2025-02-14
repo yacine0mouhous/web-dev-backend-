@@ -1,21 +1,16 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
+import dotenv from "dotenv";
+import { User } from "../models/userModel";
+
+dotenv.config();
 
 export const AppDataSource = new DataSource({
-  type: "mongodb",
-  host: "localhost",
-  port: 27017,
-  database: "your_database_name",
-  useUnifiedTopology: true,
-  synchronize: true, 
-  logging: true,
-  entities: ["src/models/*.ts"],
+    type: "mongodb",
+    url: process.env.MONGO_URI, // MongoDB connection string from .env
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    synchronize: true, // Auto sync schema (disable in production)
+    logging: false,
+    entities: [User], // Add all entities here
 });
-
-AppDataSource.initialize()
-  .then(() => {
-    console.log("Connected to MongoDB!");
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB:", err);
-  });
