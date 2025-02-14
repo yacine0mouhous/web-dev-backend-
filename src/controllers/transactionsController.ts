@@ -16,7 +16,7 @@ export const createTransaction = async (req: Request, res: Response) => {
 
     const transaction = transactionRepository.create({
       userId: new Types.ObjectId(userId), 
-      amount,
+      amount:-amount,
       currency,
       status: "completed",
     });

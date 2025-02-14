@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import dotenv from "dotenv";
 import { User } from "../models/UserModel";
+import { Transaction } from "../models/TransactionModel";
 
 dotenv.config();
 
@@ -12,5 +13,5 @@ export const AppDataSource = new DataSource({
     useUnifiedTopology: true,
     synchronize: true, // Auto sync schema (disable in production)
     logging: false,
-    entities: [User], // Add all entities here
+    entities: [User,Transaction], // Add all entities here
 });
