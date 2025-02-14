@@ -118,7 +118,7 @@ const registerUser = async (req: Request, res: Response) : Promise<void> => {
       email,
       password: hashedPassword,
       isVerified: false,
-      role: role || "tenant",
+      role: role || "client",
     });
 
     await userRepository.save(newUser);
