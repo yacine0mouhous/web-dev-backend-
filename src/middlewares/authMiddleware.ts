@@ -25,7 +25,7 @@ const verifyAuth = async (req: Request, res: Response, next: NextFunction):Promi
        res.status(401).json({ message: "Unauthorized: Invalid token" });return
     }
 
-    req.user = user;
+    req.user = {userId:user.id,role:user.role,email:user.email};
     next();
   } catch (error) {
      res.status(401).json({ message: "Unauthorized: Invalid token" });
