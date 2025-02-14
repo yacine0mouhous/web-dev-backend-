@@ -17,8 +17,11 @@ export class User {
   @Column({nullable:true})
   googleId?:string;
 
-  @Column({ default: "tenant" }) 
-  role?: "admin" | "owner" | "tenant" | "guest";
+  @Column({ default: "client" }) 
+  role?: "admin" | "owner" | "client";
+
+  @Column({nullable:true})
+  avatar?:string;
 
   @Column({ nullable: true })
   phoneNumber?: string;

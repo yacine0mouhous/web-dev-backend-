@@ -63,7 +63,7 @@ passport.use(
             email: profile.emails?.[0].value,
             googleId: profile.id,
             isVerified: true,
-            role: "tenant",
+            role: "client",
           });
           await userRepository.save(user);
         }
