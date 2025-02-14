@@ -6,10 +6,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-import { User } from "../models/userModel";
+import { User } from "../models/UserModel";
 import { AppDataSource } from "../config/data-source";
 import { Request, Response , RequestHandler } from "express";
-
 dotenv.config();
 
 const userRepository: Repository<User> = AppDataSource.getRepository(User);
