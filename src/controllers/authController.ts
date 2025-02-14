@@ -1,4 +1,4 @@
-import passport from "passport";
+import passport, { Profile } from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy, VerifyCallback } from "passport-google-oauth20";
 import { Repository } from "typeorm";
@@ -53,16 +53,26 @@ passport.use(
       callbackURL: "/auth/google/callback",
       scope: ["profile", "email"],
     },
-    async (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
+    async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
         let user = await userRepository.findOne({ where: { email: profile.emails?.[0].value } });
 
         if (!user) {
+          if(!profile.photos)
           user = userRepository.create({
             fullName: profile.displayName,
             email: profile.emails?.[0].value,
             googleId: profile.id,
             isVerified: true,
+            role: "client",
+          });
+          else
+          user = userRepository.create({
+            fullName: profile.displayName,
+            email: profile.emails?.[0].value,
+            googleId: profile.id,
+            isVerified: true,
+            avatar:profile.photos[0].value,
             role: "client",
           });
           await userRepository.save(user);

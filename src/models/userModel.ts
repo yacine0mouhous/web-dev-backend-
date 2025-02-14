@@ -14,14 +14,16 @@ export class User {
   @Column()
   fullName!: string;
 
+
+  @Column({nullable:true})
+  avatar?:string;
+
   @Column({nullable:true})
   googleId?:string;
 
   @Column({ default: "client" }) 
   role?: "admin" | "owner" | "client";
 
-  @Column({nullable:true})
-  avatar?:string;
 
   @Column({ nullable: true })
   phoneNumber?: string;
