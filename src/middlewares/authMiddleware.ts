@@ -1,24 +1,35 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { User } from "../models/userModel";
+import { AppDataSource } from "../config/data-source";
+
 dotenv.config();
-interface AuthRequest extends Request {
-  user?: any; 
-}
-const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token = req.header("Authorization");
 
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. No token provided." });
-  }
+const userRepository = AppDataSource.getRepository(User);
 
+
+const verifyAuth = async (req: Request, res: Response, next: NextFunction):Promise<void> => {
   try {
-    const decoded = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET as string);
-    req.user = decoded;
+    const token = req.header("Authorization")?.split(" ")[1];
+
+    if (!token) {
+       res.status(401).json({ message: "Unauthorized: No token provided" });return
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
+
+    const user = await userRepository.findOne({ where: { id: decoded.userId } });
+
+    if (!user) {
+       res.status(401).json({ message: "Unauthorized: Invalid token" });return
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    res.status(400).json({ message: "Invalid token." });
+     res.status(401).json({ message: "Unauthorized: Invalid token" });
   }
 };
 
-export default authMiddleware;
+export { verifyAuth };
