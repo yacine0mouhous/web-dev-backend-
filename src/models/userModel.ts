@@ -1,31 +1,48 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
-import { IsEmail, MinLength } from "class-validator";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("users")
 export class User {
-    @ObjectIdColumn()
-    id!: ObjectId;
+  @PrimaryGeneratedColumn("uuid")
+  id?: string;
 
-    @Column()
-    @MinLength(3)
-    username!: string;
+  @Column({ unique: true })
+  email!: string;
 
-    @Column({ unique: true })
-    @IsEmail()
-    email!: string;
+  @Column({nullable:true})
+  password?: string; 
 
-    @Column()
-    password!: string;
-   
-    @Column({ default: false })
-    isEmailVerified!: boolean;
+  @Column()
+  fullName!: string;
 
-    @Column({ default: false })
-    is2FAEnabled!: boolean;
+  @Column({nullable:true})
+  googleId?:string;
 
-    @CreateDateColumn()
-    createdAt!: Date;
+  @Column({ default: "tenant" }) 
+  role?: "admin" | "owner" | "tenant" | "guest";
 
-    @UpdateDateColumn()
-    updatedAt!: Date;
+  @Column({ nullable: true })
+  phoneNumber?: string;
+
+  @Column({ default: false })
+  isVerified?: boolean; 
+
+  @Column({ type: "json", nullable: true })
+  profileData?: {
+    creditScore?: number;
+    rentalHistory?: string[];
+    documents?: string[]; 
+  };
+
+  @Column({ type: "json", nullable: true })
+  preferences?: {
+    preferredRentRange?: number[];
+    preferredLocation?: string;
+    notificationsEnabled?: boolean;
+  };
+
+  @CreateDateColumn()
+  createdAt!: Date;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }
