@@ -182,10 +182,9 @@ const googleAuthCallback = (req: Request, res: Response, next: NextFunction) => 
 };
 //
 const logoutUser = (req: Request, res: Response) => {
-  req.logout((err) => {
-    if (err)  res.status(500).json({ message: "Error logging out" });return
-  });
-   res.status(200).json({ message: "Logout successful" });
+  res.status(200).json({ message: "Logout successful" });
 };
+
+
 
 export { passport, registerUser, loginUser, googleAuth, googleAuthCallback, logoutUser };
