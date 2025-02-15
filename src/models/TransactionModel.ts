@@ -5,8 +5,7 @@ export class Transaction {
   @ObjectIdColumn()
   id!: ObjectId;
 
-  
-  @Column()
+  @ObjectIdColumn()
   userId!: ObjectId;
 
   @Column()

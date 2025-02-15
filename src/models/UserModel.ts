@@ -1,41 +1,39 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, ObjectIdColumn, Column } from "typeorm";
 
 @Entity("users")
 export class User {
-  @PrimaryGeneratedColumn("uuid")
-  id?: string;
+  @ObjectIdColumn()
+  _id!: string; // Change ObjectId to string
 
   @Column({ unique: true })
   email!: string;
 
-  @Column({nullable:true})
-  password?: string; 
+  @Column({ nullable: true })
+  password?: string;
 
   @Column()
   fullName!: string;
 
+  @Column({ nullable: true })
+  avatar?: string;
 
-  @Column({nullable:true})
-  avatar?:string;
+  @Column({ nullable: true })
+  googleId?: string;
 
-  @Column({nullable:true})
-  googleId?:string;
-
-  @Column({ default: "client" }) 
+  @Column({ default: "client" })
   role?: "admin" | "owner" | "client";
-
 
   @Column({ nullable: true })
   phoneNumber?: string;
 
   @Column({ default: false })
-  isVerified?: boolean; 
+  isVerified?: boolean;
 
   @Column({ type: "json", nullable: true })
   profileData?: {
     creditScore?: number;
     rentalHistory?: string[];
-    documents?: string[]; 
+    documents?: string[];
   };
 
   @Column({ type: "json", nullable: true })
@@ -45,9 +43,9 @@ export class User {
     notificationsEnabled?: boolean;
   };
 
-  @CreateDateColumn()
+  @Column()
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @Column()
   updatedAt!: Date;
 }

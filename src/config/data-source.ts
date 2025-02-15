@@ -15,3 +15,10 @@ export const AppDataSource = new DataSource({
     logging: false,
     entities: [User,Transaction], // Add all entities here
 });
+AppDataSource.initialize()
+    .then(() => {
+        console.log("Connected to MongoDB!");
+    })
+    .catch((error) => {
+        console.error("Error connecting to MongoDB:", error);
+    });

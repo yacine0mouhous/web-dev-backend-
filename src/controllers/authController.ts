@@ -8,10 +8,10 @@ import dotenv from "dotenv";
 
 import { User } from "../models/UserModel";
 import { AppDataSource } from "../config/data-source";
-import { Request, Response , RequestHandler } from "express";
+import { Request, Response , RequestHandler, NextFunction } from "express";
 dotenv.config();
-
-const userRepository: Repository<User> = AppDataSource.getRepository(User);
+console.log('authController.ts')
+const userRepository = AppDataSource.getMongoRepository(User); // ✅ Use getMongoRepository() for MongoDB
 
 
 const generateToken = (userId: string): string => {
@@ -33,7 +33,7 @@ passport.use(
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return done(null, false, { message: "Invalid credentials" });
 
-        const token = generateToken(user.id!);
+        const token = generateToken(user._id!.toString());
 
         return done(null, { user, token });
       } catch (error) {
@@ -49,35 +49,26 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      callbackURL: "/auth/google/callback",
-      scope: ["profile", "email"],
+      callbackURL: "http://localhost:5000/auth/google/callback", // Use full URL
     },
     async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
         let user = await userRepository.findOne({ where: { email: profile.emails?.[0].value } });
 
         if (!user) {
-          if(!profile.photos)
           user = userRepository.create({
             fullName: profile.displayName,
             email: profile.emails?.[0].value,
             googleId: profile.id,
             isVerified: true,
-            role: "client",
-          });
-          else
-          user = userRepository.create({
-            fullName: profile.displayName,
-            email: profile.emails?.[0].value,
-            googleId: profile.id,
-            isVerified: true,
-            avatar:profile.photos[0].value,
+            avatar: profile.photos?.[0]?.value, // Ensure it doesn't crash if undefined
             role: "client",
           });
           await userRepository.save(user);
         }
 
-        const token = generateToken(user.id!);
+        // Fix _id issue by using user.id
+        const token = generateToken(user._id.toString());
 
         return done(null, { user, token });
       } catch (error) {
@@ -86,7 +77,6 @@ passport.use(
     }
   )
 );
-
 
 passport.serializeUser((user: Express.User, done) => {
   done(null, user);
@@ -107,9 +97,11 @@ const registerUser = async (req: Request, res: Response) : Promise<void> => {
     }
 
     const existingUser = await userRepository.findOne({ where: { email } });
-    if (existingUser) { res.status(400).json({ message: "Email already in use" });
-    return;        
-}
+    if (existingUser) { 
+       res.status(400).json({ message: "Email already in use" });
+       return;        
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -119,65 +111,76 @@ const registerUser = async (req: Request, res: Response) : Promise<void> => {
       password: hashedPassword,
       isVerified: false,
       role: role || "client",
+      createdAt: new Date(), // ✅ Manually set timestamps
+      updatedAt: new Date()
     });
-
-    await userRepository.save(newUser);
-
-     res.status(201).json({ message: "User registered successfully" });
+    console.log("User created:", newUser);
+    const result = await userRepository.insertOne(newUser); // ✅ Use insertOne() instead of create()
+    
+    console.log("User created:", result);
+    res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-     res.status(500).json({ message: "Internal server error", error: error });
+    console.error("Error in registerUser:", error);
+    res.status(500).json({ message: "Internal server error", error: (error as Error).message });
   }
 };
 
-
 const loginUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { email, password } = req.body;
-  
-      if (!email || !password) {
-        res.status(400).json({ message: "All fields are required" });
-        return;
-      }
-  
-      const user = await userRepository.findOne({ where: { email } });
-      if (!user) {
-        res.status(400).json({ message: "Invalid email or password" });
-        return;
-      }
-  
-      if (!user.password) {
-        res.status(400).json({ message: "Use Google login" });
-        return;
-      }
-  
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        res.status(400).json({ message: "Invalid email or password" });
-        return;
-      }
-  
-      const token = generateToken(user.id!);
-  
-      res.status(200).json({ message: "Login successful", token, user });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error", error: error });
-    }
-  };
+  try {
+    const { email, password } = req.body;
 
+    if (!email || !password) {
+      res.status(400).json({ message: "All fields are required" });
+      return;
+    }
+
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(400).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    if (!user.password) {
+      res.status(400).json({ message: "Use Google login" });
+      return;
+    }
+
+    console.log("User Object:", user);
+    console.log("User _id:", user._id?.toString());
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      res.status(400).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    if (!user._id) {
+      res.status(500).json({ message: "User ID is undefined" });
+      return;
+    }
+
+    const token = generateToken(user._id.toString()); // Now it's a string
+    console.log("Token:", token);
+
+    res.status(200).json({ message: "Login successful", token, user });
+  } catch (error) {
+    console.error("Error in loginUser:", error);
+    res.status(500).json({ message: "Internal server error", error: error });
+  }
+};
 
 const googleAuth = passport.authenticate("google", { scope: ["profile", "email"] });
 
-
-const googleAuthCallback = (req: Request, res: Response) => {
+const googleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
+  console.log("Google Auth Callback");
   passport.authenticate("google", { session: false }, (err, data) => {
     if (err || !data) {
       return res.status(401).json({ message: "Google authentication failed" });
     }
-    res.status(200).json({ message: "Google login successful", token: data.token, user: data.user });
-  })(req, res);
+    return res.status(200).json({ message: "Google login successful", token: data.token, user: data.user });
+  })(req, res, next);
 };
-
-
+//
 const logoutUser = (req: Request, res: Response) => {
   req.logout((err) => {
     if (err)  res.status(500).json({ message: "Error logging out" });return
