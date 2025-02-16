@@ -10,7 +10,7 @@ dotenv.config();
 const userRepository = AppDataSource.getRepository(User);
 
 const verifyAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  console.log(req.header("Authorization"));
+
   try {
     const token = req.header("Authorization");
 
@@ -22,14 +22,13 @@ const verifyAuth = async (req: Request, res: Response, next: NextFunction): Prom
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
 
-    console.log(decoded);
-    console.log(decoded.userId);
+
 
     const user = await userRepository.findOne({
       where: { _id: new ObjectId(decoded.userId) as any }, // Ensure ObjectId conversion
     });
 
-    console.log(user);
+
 
     if (!user) {
       res.status(401).json({ message: "Unauthorized: Invalid token" });

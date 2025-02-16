@@ -1,12 +1,13 @@
+import { ObjectId } from "mongodb";
 import { Entity, ObjectIdColumn, Column, CreateDateColumn } from "typeorm";
 
 @Entity()
 export class Property {
   @ObjectIdColumn()
-  _id!: string;
+  _id!: object;
 
   @Column()
-  ownerId!: string;
+  ownerId!: ObjectId;
 
   @Column()
   title!: string;

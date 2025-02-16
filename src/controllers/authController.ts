@@ -10,7 +10,7 @@ import { User } from "../models/UserModel";
 import { AppDataSource } from "../config/data-source";
 import { Request, Response , RequestHandler, NextFunction } from "express";
 dotenv.config();
-console.log('authController.ts')
+
 const userRepository = AppDataSource.getMongoRepository(User); // ✅ Use getMongoRepository() for MongoDB
 
 
@@ -169,7 +169,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
     }
 
     const token = generateToken(user._id.toString()); // Now it's a string
-    console.log("Token:", token);
+
 
     res.status(200).json({ message: "Login successful", token, user });
   } catch (error) {

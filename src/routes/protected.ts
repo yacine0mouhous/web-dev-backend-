@@ -3,7 +3,7 @@ import { verifyAuth } from "../middlewares/authMiddleware";
 import verifieRole from "../middlewares/verifyRoleMiddleware";
 
 const verifier_router = express.Router();
-console.log("verifier_router");
+
 
 // ✅ Public Route (No Auth Needed)
 verifier_router.get("/", (req, res) => {

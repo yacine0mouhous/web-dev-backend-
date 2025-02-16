@@ -29,7 +29,6 @@ const verifieRole = (roles: string[]) => {
       res.status(403).json({ message: "Forbidden: Insufficient permissions" });return 
       }
       req.user = { userId: user._id, role: user.role, email: user.email };
-      console.log("Role Verified");
       next();
     } catch (error) {
       console.error("Authorization Error:", error);

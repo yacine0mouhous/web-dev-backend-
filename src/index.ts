@@ -8,6 +8,9 @@ import { stripe } from "./utils/stripe";
 import { verifyAuth } from "./middlewares/authMiddleware";
 import { default as authRouter } from "./routes/authRouter";
 import verifier_router from "./routes/protected";
+import { default as usersrouter } from "./routes/userRouter";
+import router from "./routes/PropertyRouter";
+import PropertyRouter from "./routes/PropertyRouter";
 
 dotenv.config();
 
@@ -16,6 +19,9 @@ app.use(cors());
 app.use(express.json());
 app.use(authRouter);
 app.use(verifier_router)
+app.use(usersrouter);
+app.use(router);
+
 
 
 
