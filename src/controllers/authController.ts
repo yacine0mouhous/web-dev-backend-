@@ -90,7 +90,16 @@ passport.deserializeUser((user: Express.User, done) => {
 const registerUser = async (req: Request, res: Response) : Promise<void> => {
   try {
     const { fullName, email, password, role } = req.body;
-
+    if (role === "admin") {
+      res.status(400).json({ message: "Cannot register as an admin. Admin access requires authorization." });
+      return;
+    }
+    
+    if (role !== "client" && role !== "owner") {
+      res.status(400).json({ message: "Invalid role. Allowed roles are 'client' or 'owner'." });
+      return;
+    }
+    
     if (!fullName || !email || !password) {
        res.status(400).json({ message: "All fields are required" });
        return;
