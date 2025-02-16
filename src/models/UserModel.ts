@@ -1,9 +1,10 @@
+import { ObjectId } from "mongodb";
 import { Entity, ObjectIdColumn, Column } from "typeorm";
 
 @Entity("users")
 export class User {
   @ObjectIdColumn()
-  _id!: string; // Change ObjectId to string
+  _id!: ObjectId; // Change ObjectId to string
 
   @Column({ unique: true })
   email!: string;

@@ -1,24 +1,41 @@
 import { Request, Response, NextFunction } from "express";
+import { AppDataSource } from "../config/data-source";
+import jwt from "jsonwebtoken";
+import { User } from "../models/UserModel";
+import { ObjectId } from "mongodb";
 
-const verifyAdmin = (req: Request, res: Response, next: NextFunction) => {
-  const { user }: any = req;
+const userRepository = AppDataSource.getRepository(User);
 
-  if (!user) {
-    return res.status(401).json({ message: "Unauthorized access" });
-  }
+const verifieRole = (roles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const token = req.header("Authorization");
 
-  if (user.role !== "admin") {
-    return res.status(403).json({ message: "Forbidden: Admins only" });
-  }
+      if (!token) {
+        res.status(401).json({ message: "Unauthorized: No token provided" });return 
+      }
 
-  next(); // ✅ Ensure next() is always called if no errors
+      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
+
+      const user = await userRepository.findOne({
+        where: { _id: new ObjectId(decoded.userId) },
+      });
+
+      if (!user) {
+     res.status(401).json({ message: "Unauthorized: User not found" });return
+      }
+
+      if (!roles.includes(user.role!)) {
+      res.status(403).json({ message: "Forbidden: Insufficient permissions" });return 
+      }
+      req.user = { userId: user._id, role: user.role, email: user.email };
+      console.log("Role Verified");
+      next();
+    } catch (error) {
+      console.error("Authorization Error:", error);
+      res.status(401).json({ message: "Unauthorized: Invalid token" });
+    }
+  };
 };
-export const verifyOwner = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user && req.user.role === 'owner') {
-    res.json({ message: "Owner access granted" });
-  } else {
-    res.status(403).json({ message: "Forbidden" });
-  }
-  next();
-};
-export { verifyAdmin, verifyOwner };
+
+export default verifieRole;

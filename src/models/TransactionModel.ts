@@ -15,7 +15,7 @@ export class Transaction {
   currency!: string;
 
   @Column()
-  status!: "pending" | "completed" | "failed";
+  status!: "pending" | "completed" | "failed"| "canceled";
 
   @CreateDateColumn()
   createdAt!: Date;
