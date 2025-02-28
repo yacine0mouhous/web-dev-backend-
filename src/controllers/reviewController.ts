@@ -53,36 +53,89 @@ const createReview = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
-const updateReview = async (req:Request,res:Response)=>{
+const updateReview = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { rating, comment } = req.body;
 
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid review ID' });
+            return;
+        }
 
-    
-}
+        if (rating && (rating < 1 || rating > 5)) {
+            res.status(400).json({ message: 'Rating must be between 1 and 5' });
+            return;
+        }
 
-const getAllReviews = async (req:Request,res:Response)=>{
+        const reviewId = new ObjectId(id);
+        const updateData: Partial<Review> = {};
+        if (rating) updateData.rating = rating;
+        if (comment) updateData.comment = comment;
 
+        const updatedReview = await reviewRepository.findOneAndUpdate(
+            { _id: reviewId },
+            { $set: updateData },
+            { returnDocument: 'after' }
+        );
 
-    
-}
+        if (!updatedReview) {
+            res.status(404).json({ message: 'Review not found' });
+            return;
+        }
 
-const getReviewById = async (req:Request,res:Response)=>{
+        res.status(200).json({ message: 'Review updated successfully', review: updatedReview });
+    } catch (error) {
+        console.error('Error updating review:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
+const getAllReviews = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const reviews = await reviewRepository.find();
+        res.status(200).json(reviews);
+    } catch (error) {
+        console.error('Error fetching reviews:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
-    
-}
+const getReviewById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid review ID' });
+            return;
+        }
+
+        const reviewId = new ObjectId(id);
+        const review = await reviewRepository.findOneBy({ _id: reviewId });
+
+        if (!review) {
+            res.status(404).json({ message: 'Review not found' });
+            return;
+        }
+
+        res.status(200).json(review);
+    } catch (error) {
+        console.error('Error fetching review:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 const deleteReview = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
-        if (!ObjectId.isValid(id)) {
-             res.status(400).json({ message: 'Invalid review ID' });return
-        }
 
+console.log(id)
         const reviewId = new ObjectId(id);
-        const deleteResult = await reviewRepository.deleteOne({where:{ _id: reviewId }});
-         
-        if (deleteResult.deletedCount === 0) {
+        const deleteResult = await reviewRepository.delete(reviewId);
+         console.log(deleteResult)
+        if (!deleteResult) {
              res.status(404).json({ message: 'Review not found' });return
         }
 

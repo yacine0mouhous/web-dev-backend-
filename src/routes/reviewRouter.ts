@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createReview, getAllReviews, getReviewById, updateReview } from "../controllers/reviewController";
+import { createReview, deleteReview, getAllReviews, getReviewById, updateReview } from "../controllers/reviewController";
 import { verifyAuth } from "../middlewares/authMiddleware";
 
 const reviewRouter = Router()
@@ -17,6 +17,7 @@ reviewRouter.get("/:id", getReviewById);
 
 // Update review by ID
 reviewRouter.put("/:id",verifyAuth ,updateReview);
+reviewRouter.delete("/:id",verifyAuth ,deleteReview);
 
 
 

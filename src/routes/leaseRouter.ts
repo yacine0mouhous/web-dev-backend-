@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createLease, getLeaseById, updateLease } from "../controllers/leaseController";
+import { createLease, deleteLease, getAllLeases, getLeaseById, updateLease } from "../controllers/leaseController";
 import { verifyAuth } from "../middlewares/authMiddleware";
 
 const leaseRouter = Router()
@@ -7,7 +7,7 @@ const leaseRouter = Router()
 
 
 // Get all leases
-leaseRouter.get("/" ,getLeaseById);
+leaseRouter.get("/" ,getAllLeases);
 
 // create a lease
 leaseRouter.post("/create",verifyAuth ,createLease);
@@ -17,6 +17,8 @@ leaseRouter.get("/:id", getLeaseById);
 
 // Update lease by ID
 leaseRouter.put("/:id",verifyAuth ,updateLease);
+// delete a lease by id 
+leaseRouter.delete("/:id",verifyAuth ,deleteLease);
 
 
 

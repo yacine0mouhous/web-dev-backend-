@@ -1,14 +1,15 @@
-import { Entity, ObjectIdColumn, ObjectId, Column } from "typeorm";
+import { Entity, ObjectIdColumn, Column } from "typeorm";
+import { ObjectId } from "mongodb";
 
 @Entity()
 export class Lease {
   @ObjectIdColumn()
   id!: ObjectId;
 
-  @Column(() => ObjectId)
+  @Column()
   propertyId!: ObjectId;
 
-  @Column(() => ObjectId)
+  @Column()
   clientId!: ObjectId; 
 
   @Column()

@@ -4,13 +4,31 @@ import { Lease } from "../models/LeaseModel";
 import { ObjectId } from "mongodb";
 import { deleteUserLease, updateUserLeases } from "../utils/userUtils";
 import { deletePropertyLease, updatePropertyLeases } from "../utils/propertyUtils";
-
+import jwt from 'jsonwebtoken';
 const LeaseRepository = AppDataSource.getMongoRepository(Lease);
-
 
 const createLease = async (req: Request, res: Response):Promise<void> => {
     try {
-        const { propertyId, clientId, startDate, endDate, rentAmount } = req.body;
+    const token = req.headers.authorization;
+        if (!token) {
+            res.status(401).json({ message: 'Unauthorized: Missing token' });
+            return;
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            res.status(500).json({ message: 'Internal server error: Missing JWT secret' });
+            return;
+        }
+        const decoded = jwt.verify(token, jwtSecret) as unknown as { userId: string };
+        const clientId= decoded.userId;
+
+        if (!clientId || !ObjectId.isValid(clientId)) {
+            res.status(401).json({ message: 'Unauthorized: Invalid clientId ' });
+            return;
+        }
+
+        const { propertyId, startDate, endDate, rentAmount } = req.body;
 
         if (!propertyId || !clientId || !startDate || !endDate || !rentAmount) {
              res.status(400).json({ message: 'Missing required fields' });return
@@ -35,60 +53,104 @@ const createLease = async (req: Request, res: Response):Promise<void> => {
     }
 };
 
-const updateLease = async (req:Request,res:Response)=>{
+const updateLease = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { startDate, endDate, rentAmount, status } = req.body;
 
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: "Invalid lease ID" });
+            return;
+        }
 
-    
-}
+        const leaseId = new ObjectId(id);
+        const lease = await LeaseRepository.findOne({ where: { _id: leaseId } });
 
-const getAllLeases = async (req:Request,res:Response)=>{
+        if (!lease) {
+            res.status(404).json({ message: "Lease not found" });
+            return;
+        }
 
+        if (startDate) lease.startDate = new Date(startDate);
+        if (endDate) lease.endDate = new Date(endDate);
+        if (rentAmount) lease.rentAmount = rentAmount;
+        if (status) lease.status = status;
 
-    
-}
+        const updatedLease = await LeaseRepository.save(lease);
+        res.status(200).json({ message: "Lease updated successfully", lease: updatedLease });
+    } catch (error) {
+        console.error("Error updating lease:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
 
-const getLeaseById = async (req:Request,res:Response)=>{
+const getAllLeases = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const leases = await LeaseRepository.find();
+        res.status(200).json({ leases });
+    } catch (error) {
+        console.error("Error fetching leases:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
 
+const getLeaseById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
 
-    
-}
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: "Invalid lease ID" });
+            return;
+        }
+
+        const leaseId = new ObjectId(id);
+        const lease = await LeaseRepository.findOne({ where: { _id: leaseId } });
+
+        if (!lease) {
+            res.status(404).json({ message: "Lease not found" });
+            return;
+        }
+
+        res.status(200).json({ lease });
+    } catch (error) {
+        console.error("Error fetching lease:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 
 const deleteLease = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
-        console.log('Received DELETE request for lease ID:', id);
-
         if (!ObjectId.isValid(id)) {
-            console.log('Invalid lease ID:', id);
             res.status(400).json({ message: 'Invalid lease ID' });
             return;
         }
 
         const leaseId = new ObjectId(id);
-
-        console.log('Looking for lease with ID:', leaseId);
-        const lease = await LeaseRepository.findOneBy({ _id: leaseId });
+        const lease = await LeaseRepository.findOne({ where: { _id: leaseId } });
 
         if (!lease) {
-            console.log('Lease not found:', leaseId);
             res.status(404).json({ message: 'Lease not found' });
             return;
         }
 
-        console.log('Deleting lease:', lease);
-        const deleteResult = await LeaseRepository.deleteOne({where:{ _id: leaseId }});
+        const deleteResult = await LeaseRepository.deleteOne({ _id: leaseId });
 
         if (deleteResult.deletedCount === 0) {
-            console.log('Failed to delete lease:', leaseId);
             res.status(404).json({ message: 'Lease not found' });
             return;
         }
+        
+       console.log(lease)
+ console.log(lease.propertyId)
+ console.log(lease.clientId)
 
-        console.log('Removing lease ID from client:', lease.clientId);
+        // Remove lease ID from user
         await deleteUserLease(lease.clientId, leaseId);
 
-        console.log('Removing lease ID from property:', lease.propertyId);
+        // Remove lease ID from property
         await deletePropertyLease(lease.propertyId, leaseId);
 
         res.status(200).json({ message: 'Lease deleted successfully' });
