@@ -6,14 +6,14 @@ export class Transaction {
   @ObjectIdColumn()
   id!: ObjectId;
 
-  @Column(() => ObjectId)
-  payerId!: ObjectId; 
+  @Column()
+  payerId!: ObjectId;
 
-  @Column(() => ObjectId)
+  @Column()
   receiverId!: ObjectId;
 
-  @Column(() => ObjectId)
-  propertyId!: ObjectId; 
+  @Column()
+  propertyId!: ObjectId;
 
   @Column()
   amount!: number;
@@ -34,5 +34,5 @@ export class Transaction {
   paymentMethod!: "credit_card" | "bank_transfer" | "paypal";
 
   @CreateDateColumn()
-  createdAt!: Date; 
+  createdAt!: Date;
 }

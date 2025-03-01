@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../config/data-source";
 import { MaintenanceRequest } from "../models/MaintenanceRequestModel";
 import { ObjectId } from "mongodb";
+import jwt from 'jsonwebtoken';
 import { deleteUserMaintenanceRequest, updateUserMaintenanceRequests } from "../utils/userUtils";
 import { deletePropertyMaintenanceRequest, updatePropertyMaintenanceRequests } from "../utils/propertyUtils";
 
@@ -11,7 +12,26 @@ const MaintenanceRequestRepository = AppDataSource.getMongoRepository(Maintenanc
 
 const createMaintenanceRequest = async (req: Request, res: Response):Promise<void> => {
     try {
-        const { propertyId, clientId, ownerId, description } = req.body;
+    const token = req.headers.authorization;
+        if (!token) {
+            res.status(401).json({ message: 'Unauthorized: Missing token' });
+            return;
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            res.status(500).json({ message: 'Internal server error: Missing JWT secret' });
+            return;
+        }
+        const decoded = jwt.verify(token, jwtSecret) as unknown as { userId: string };
+        const clientId= decoded.userId;
+
+        if (!clientId || !ObjectId.isValid(clientId)) {
+            res.status(401).json({ message: 'Unauthorized: Invalid ownerId' });
+            return;
+        }
+
+        const { propertyId, ownerId, description } = req.body;
 
         if (!propertyId || !clientId || !ownerId || !description) {
              res.status(400).json({ message: 'Missing required fields' });return
@@ -35,24 +55,71 @@ const createMaintenanceRequest = async (req: Request, res: Response):Promise<voi
     }
 };
 
-const updateMaintenanceRequest = async (req:Request,res:Response)=>{
+const updateMaintenanceRequest = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { status, description } = req.body;
 
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid maintenance request ID' });
+            return;
+        }
 
-    
-}
+        const maintenanceRequestId = new ObjectId(id);
 
-const getAllMaintenanceRequests = async (req:Request,res:Response)=>{
+        const maintenanceRequest = await MaintenanceRequestRepository.findOne({ where: { _id: maintenanceRequestId } });
 
+        if (!maintenanceRequest) {
+            res.status(404).json({ message: 'Maintenance request not found' });
+            return;
+        }
 
-    
-}
+        if (status) maintenanceRequest.status = status;
+        if (description) maintenanceRequest.description = description;
 
-const getMaintenanceRequestById = async (req:Request,res:Response)=>{
+        await MaintenanceRequestRepository.save(maintenanceRequest);
 
+        res.status(200).json({ message: 'Maintenance request updated successfully', maintenanceRequest });
+    } catch (error) {
+        console.error('Error updating maintenance request:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
-    
-}
+const getAllMaintenanceRequests = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const maintenanceRequests = await MaintenanceRequestRepository.find();
+        res.status(200).json(maintenanceRequests);
+    } catch (error) {
+        console.error('Error fetching maintenance requests:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
+const getMaintenanceRequestById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid maintenance request ID' });
+            return;
+        }
+
+        const maintenanceRequestId = new ObjectId(id);
+
+        const maintenanceRequest = await MaintenanceRequestRepository.findOne({ where: { _id: maintenanceRequestId } });
+
+        if (!maintenanceRequest) {
+            res.status(404).json({ message: 'Maintenance request not found' });
+            return;
+        }
+
+        res.status(200).json(maintenanceRequest);
+    } catch (error) {
+        console.error('Error fetching maintenance request:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 const deleteMaintenanceRequest = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
@@ -77,9 +144,9 @@ const deleteMaintenanceRequest = async (req: Request, res: Response): Promise<vo
         }
 
         console.log('Deleting maintenance request:', maintenanceRequest);
-        const deleteResult = await MaintenanceRequestRepository.deleteOne({where:{ _id: maintenanceRequestId }});
+        const deleteResult = await MaintenanceRequestRepository.delete( maintenanceRequestId);
 
-        if (deleteResult.deletedCount === 0) {
+        if (!deleteResult) {
             console.log('Failed to delete maintenance request:', maintenanceRequestId);
             res.status(404).json({ message: 'Maintenance request not found' });
             return;

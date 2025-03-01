@@ -2,14 +2,43 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../config/data-source";
 import { Notification } from "../models/NotificationModel";
 import { ObjectId } from "mongodb";
+import jwt from "jsonwebtoken";
 import { deleteUserNotification, updateUserNotifications } from "../utils/userUtils";
 
 const notificationRepository = AppDataSource.getMongoRepository(Notification);
 
 
 const createNotification = async (req: Request, res: Response):Promise<void> => {
+
+
     try {
-        const { userId, title, description, type } = req.body;
+  const token = req.headers.authorization;
+        if (!token) {
+            res.status(401).json({ message: 'Unauthorized: Missing token' });
+            return;
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            res.status(500).json({ message: 'Internal server error: Missing JWT secret' });
+            return;
+        }
+        const decoded = jwt.verify(token, jwtSecret) as unknown as { userId: string };
+        const userId= decoded.userId;
+
+        if (!userId || !ObjectId.isValid(userId)) {
+            res.status(401).json({ message: 'Unauthorized: Invalid ownerId' });
+            return;
+        }
+
+
+
+
+
+
+
+
+        const { title, description, type } = req.body;
 
         if (!userId || !title || !description || !type) {
              res.status(400).json({ message: 'Missing required fields' });return
@@ -32,19 +61,43 @@ const createNotification = async (req: Request, res: Response):Promise<void> => 
     }
 };
 
-const getNotificationById = async (req:Request,res:Response)=>{
+const getNotificationById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
 
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid notification ID' });
+            return;
+        }
 
-    
-}
-const getAllNotifications = async (req:Request,res:Response)=>{
+        const notification = await notificationRepository.findOne({ where: { _id: new ObjectId(id) } });
 
+        if (!notification) {
+            res.status(404).json({ message: 'Notification not found' });
+            return;
+        }
 
-    
-}
+        res.status(200).json({ notification });
+    } catch (error) {
+        console.error('Error fetching notification:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+const getAllNotifications = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const notifications = await notificationRepository.find();
+        res.status(200).json({ notifications });
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 const deleteNotification = async (req: Request, res: Response): Promise<void> => {
     try {
+
         const { id } = req.params;
 
         console.log('Received DELETE request for notification ID:', id);
@@ -67,9 +120,9 @@ const deleteNotification = async (req: Request, res: Response): Promise<void> =>
         }
 
         console.log('Deleting notification:', notification);
-        const deleteResult = await notificationRepository.deleteOne({where:{ _id: notificationId }});
+        const deleteResult = await notificationRepository.delete( notificationId);
 
-        if (deleteResult.deletedCount === 0) {
+        if (!deleteResult) {
             console.log('Failed to delete notification:', notificationId);
             res.status(404).json({ message: 'Notification not found' });
             return;
@@ -85,11 +138,35 @@ const deleteNotification = async (req: Request, res: Response): Promise<void> =>
     }
 };
 
+const updateNotification = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
 
-const updateNotification = async (req:Request,res:Response)=>{
+        if (!ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Invalid notification ID' });
+            return;
+        }
 
+        if (!status) {
+            res.status(400).json({ message: 'Missing status field' });
+            return;
+        }
 
-    
-}
+        const notification = await notificationRepository.findOne({ where: { _id: new ObjectId(id) } });
 
+        if (!notification) {
+            res.status(404).json({ message: 'Notification not found' });
+            return;
+        }
+
+        notification.status = status;
+        await notificationRepository.save(notification);
+
+        res.status(200).json({ message: 'Notification updated successfully', notification });
+    } catch (error) {
+        console.error('Error updating notification:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 export {getNotificationById,deleteNotification,createNotification,updateNotification,getAllNotifications}

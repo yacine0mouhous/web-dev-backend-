@@ -4,8 +4,6 @@ import { verifyAuth } from "../middlewares/authMiddleware";
 
 const reviewRouter = Router()
 
-
-
 // Get all reviews
 reviewRouter.get("/" ,getAllReviews);
 
@@ -17,12 +15,8 @@ reviewRouter.get("/:id", getReviewById);
 
 // Update review by ID
 reviewRouter.put("/:id",verifyAuth ,updateReview);
+// Delete review by ID
 reviewRouter.delete("/:id",verifyAuth ,deleteReview);
-
-
-
-
-
 
 
 export default reviewRouter

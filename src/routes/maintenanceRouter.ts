@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createMaintenanceRequest, getAllMaintenanceRequests, getMaintenanceRequestById, updateMaintenanceRequest } from "../controllers/maintenanceController";
+import { createMaintenanceRequest, deleteMaintenanceRequest, getAllMaintenanceRequests, getMaintenanceRequestById, updateMaintenanceRequest } from "../controllers/maintenanceController";
 import { verifyAuth } from "../middlewares/authMiddleware";
 
 const maintenanceRouter = Router()
@@ -18,7 +18,8 @@ maintenanceRouter.get("/:id", getMaintenanceRequestById);
 
 // Update maintenanceRequest by ID
 maintenanceRouter.put("/:id",verifyAuth ,updateMaintenanceRequest);
-
+// Delete maintenanceRequest by ID
+maintenanceRouter.delete("/:id",verifyAuth ,deleteMaintenanceRequest);
 
 
 
