@@ -6,8 +6,8 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/UserModel";
 import { ObjectId } from "mongodb";
 import { Property } from "../models/PropertyModel";
-// function to verifier the owner of the property 
-export const verifyOwner = async (req: Request, res: Response, next: NextFunction) => {
+// middlware to verifier owner access to the property 
+export const verifyOwner= async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization;;
       if (!token) return res.status(403).json({ message: 'Token missing' });

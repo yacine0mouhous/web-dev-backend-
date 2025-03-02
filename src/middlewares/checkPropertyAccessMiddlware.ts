@@ -7,8 +7,8 @@ import { User } from "../models/UserModel";
 import { ObjectId } from "mongodb";
 import { Property } from "../models/PropertyModel";
 import { Booking } from "../models/BookingModel";
-// function to verifier the owner of the property 
-export const booking = async (req: Request, res: Response, next: NextFunction) => {
+// verifier if the client is booked to the property 
+export const verifierAccess = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization;;
       if (!token) return res.status(403).json({ message: 'Token missing' });
