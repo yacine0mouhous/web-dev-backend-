@@ -1,102 +1,15 @@
-import passport, { Profile } from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import { Strategy as GoogleStrategy, VerifyCallback } from "passport-google-oauth20";
-import { Repository } from "typeorm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-
 import { User } from "../models/UserModel";
 import { AppDataSource } from "../config/data-source";
 import { Request, Response , NextFunction } from "express";
 dotenv.config();
-
-const userRepository = AppDataSource.getMongoRepository(User); // ✅ Use getMongoRepository() for MongoDB
-
-
+const userRepository = AppDataSource.getMongoRepository(User); 
 const generateToken = (userId: string): string => {
   return jwt.sign({ userId }, process.env.JWT_SECRET as string, { expiresIn: "7d" });
 };
 
-
-passport.use(
-  new LocalStrategy(
-    { usernameField: "email", passwordField: "password", session: false },
-    async (email: string, password: string, done) => {
-      try {
-        const user = await userRepository.findOne({ where: { email } });
-
-        if (!user) return done(null, false, { message: "User not found" });
-
-        if (!user.password) return done(null, false, { message: "Use Google login" });
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return done(null, false, { message: "Invalid credentials" });
-
-        const token = generateToken(user._id!.toString());
-
-        return done(null, { user, token });
-      } catch (error) {
-        return done(error, undefined);
-      }
-    }
-  )
-);
-
-
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      callbackURL: "http://localhost:5000/auth/google/callback",
-    },
-    async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
-      try {
-        const email = profile.emails?.[0]?.value;
-
-        if (!email) return done(new Error("Google account must have an email"), undefined);
-
-        let user = await userRepository.findOne({ where: { email } });
-
-        if (!user) {
-          user = userRepository.create({
-            fullName: profile.displayName,
-            email,
-            googleId: profile.id,
-            isVerified: true,
-            avatar: profile.photos?.[0]?.value || "",
-            role: "client",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            transactionIdsAsPayer: [], 
-            transactionIdsAsReceiver: [], 
-            propertyIds: [], 
-            notificationIds: [], 
-            maintenanceRequestIds: [], 
-            leaseIds: [], 
-            bookingIds: [], 
-          });
-          await userRepository.save(user);
-        }
-
-        const token = generateToken(user._id.toString());
-
-        return done(null, { user, token });
-      } catch (error) {
-        return done(error, undefined);
-      }
-    }
-  )
-);
-
-passport.serializeUser((user: Express.User, done) => {
-  done(null, user);
-});
-
-passport.deserializeUser((user: Express.User, done) => {
-  done(null, user);
-});
 
 const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -196,22 +109,121 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const googleAuth = passport.authenticate("google", { scope: ["profile", "email"] });
 
-const googleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
-  console.log("Google Auth Callback");
-  passport.authenticate("google", { session: false }, (err, data) => {
-    if (err || !data) {
-      return res.status(401).json({ message: "Google authentication failed" });
-    }
-    return res.status(200).json({ message: "Google login successful", token: data.token, user: data.user });
-  })(req, res, next);
-};
+
 //
 const logoutUser = (req: Request, res: Response) => {
   res.status(200).json({ message: "Logout successful" });
 };
 
+const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  const { token } = req.body;
+
+  if (!token) {
+    res.status(400).json({ message: 'Google token is required.' });
+    return;
+  }
+
+  try {
+    const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${token}`);
+    if (!tokenInfoResponse.ok) {
+      throw new Error('Failed to verify Google token.');
+    }
+    const tokenInfo = await tokenInfoResponse.json();
+
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!userInfoResponse.ok) {
+      throw new Error('Failed to fetch user profile data.');
+    }
+    const userInfo = await userInfoResponse.json();
+
+    const { email, name } = userInfo;
+
+    const user: User | null = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(404).json({ message: 'User not found. Please register.' });
+      return;
+    }
+
+    const jwtToken = generateToken(user._id.toString());
+
+    res.json({ token: jwtToken, user });
+  } catch (error) {
+    console.error('Google login failed:', error);
+
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message || 'Google login failed.' });
+    } else {
+      res.status(500).json({ message: 'Google login failed.' });
+    }
+  }
+};
+const googleRegister = async (req: Request, res: Response): Promise<void> => {
+  const { token, role } = req.body;
+
+  if (!token || !role) {
+    res.status(400).json({ message: 'Google token and role are required.' });
+    return;
+  }
+
+  try {
+    const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${token}`);
+    if (!tokenInfoResponse.ok) {
+      throw new Error('Failed to verify Google token.');
+    }
+    const tokenInfo = await tokenInfoResponse.json();
+
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!userInfoResponse.ok) {
+      throw new Error('Failed to fetch user profile data.');
+    }
+    const userInfo = await userInfoResponse.json();
+
+    const { email, name, picture, sub } = userInfo;
+
+    const existingUser: User | null = await userRepository.findOne({ where: { email } });
+    if (existingUser) {
+      res.status(400).json({ message: 'User already exists. Please log in.' });
+      return;
+    }
+
+    const newUser: User = userRepository.create({
+      fullName: name, 
+      email,
+      avatar: picture,
+      googleId: sub,
+      role,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      transactionIdsAsPayer: [],
+      transactionIdsAsReceiver: [],
+      propertyIds: [],
+      notificationIds: [],
+      maintenanceRequestIds: [],
+      leaseIds: [],
+      bookingIds: [],
+    });
+    await userRepository.save(newUser);
+    const jwtToken = generateToken(newUser._id.toString());
+    res.status(201).json({ token: jwtToken, user: newUser });
+  } catch (error) {
+    console.error('Google registration failed:', error);
+
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message || 'Google registration failed.' });
+    } else {
+      res.status(500).json({ message: 'Google registration failed.' });
+    }
+  }
+};
 
 
-export { passport, registerUser, loginUser, googleAuth, googleAuthCallback, logoutUser };
+export {registerUser, loginUser, logoutUser ,googleLogin,googleRegister};

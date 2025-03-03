@@ -1,17 +1,14 @@
 import express from "express";
-import {googleAuth, googleAuthCallback, loginUser, logoutUser, registerUser } from "../controllers/authController";
+import { googleLogin, googleRegister, loginUser, logoutUser, registerUser } from "../controllers/authController";
 
 const authRouter = express.Router();
 
-// Register & Login Routes
 authRouter.post("/register", registerUser);
 authRouter.post("/login", loginUser);
 
-// Google Auth Routes
-authRouter.get("/google", googleAuth);
-authRouter.get("/google/callback", googleAuthCallback);
+authRouter.post("/google-login", googleLogin);
+authRouter.post("/google-register", googleRegister);
 
-// Logout Route
 authRouter.post("/logout", logoutUser);
 
 export default authRouter;
