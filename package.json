@@ -26,9 +26,11 @@
     "@types/passport-local": "^1.0.38",
     "@types/redis": "^4.0.10",
     "@types/stripe": "^8.0.416",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
@@ -55,6 +57,8 @@
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.2",
     "stripe": "^17.6.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20",
     "validator": "^13.12.0",
     "web3": "^4.16.0",

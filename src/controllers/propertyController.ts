@@ -7,6 +7,7 @@ import { deleteUserProperty, updateUserProperties } from "../utils/userUtils";
 import dotenv from "dotenv";
 const propertyRepository = AppDataSource.getMongoRepository(Property);
 dotenv.config();
+
 const createProperty = async (req: Request, res: Response): Promise<void> => {
     try {
         const {
@@ -60,7 +61,9 @@ const createProperty = async (req: Request, res: Response): Promise<void> => {
             leaseIds: [],
             bookingIds: [],
         });
+    
         const savedProperty = await propertyRepository.save(property);
+        console.log(savedProperty);
         await updateUserProperties(savedProperty.ownerId!, savedProperty.id);
         res.status(201).json({ message: 'Property created successfully', property: savedProperty });
     } catch (error) {
@@ -117,11 +120,7 @@ const updateProperty = async (req: Request, res: Response): Promise<void> => {
         console.error('Error updating property:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
-    
 };
-
-
-
 
 // delete function 
 const deleteProperty = async (req: Request, res: Response): Promise<void> => {
@@ -142,9 +141,7 @@ const deleteProperty = async (req: Request, res: Response): Promise<void> => {
         if (property.ownerId) {
             console.log(property.ownerId , property.id)
             await deleteUserProperty(property.ownerId, property.id);
-
         }
-
 
         res.status(200).json({ message: 'Property deleted successfully' });
     } catch (error) {
@@ -153,13 +150,12 @@ const deleteProperty = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
-
-
-
-// function to get all properties 
-const getAllProperties = async (_req: Request, res: Response): Promise<void> => {
+const getAllProperties = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Query the database for all properties
         const properties = await propertyRepository.find();
+
+        // Return the properties as the response
         res.status(200).json({ message: 'Properties retrieved successfully', properties });
     } catch (error) {
         console.error('Error retrieving properties:', error);
@@ -167,27 +163,64 @@ const getAllProperties = async (_req: Request, res: Response): Promise<void> => 
     }
 };
 
-
-
-//function to get propertie by id 
 const getPropertyById = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+        
+        // 1. Check if the provided ID is valid
         if (!ObjectId.isValid(id)) {
             res.status(400).json({ message: 'Invalid property ID' });
             return;
         }
 
+        // 2. Query the database to fetch the property by ID
         const property = await propertyRepository.findOneBy({ _id: new ObjectId(id) });
+
         if (!property) {
             res.status(404).json({ message: 'Property not found' });
             return;
         }
 
+        // 3. Return the property as the response
         res.status(200).json({ message: 'Property retrieved successfully', property });
     } catch (error) {
         console.error('Error retrieving property:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-export {createProperty,getAllProperties,getPropertyById,updateProperty,deleteProperty}
+
+const SearchController = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const {  country, state, city, status, type, category } = req.query;
+
+        // Create search conditions based on the query parameters
+        const searchConditions: any = {};
+
+    
+        if (country) searchConditions.country = { $regex: new RegExp(country as string, "i") };
+        if (state) searchConditions.state = { $regex: new RegExp(state as string, "i") };
+        if (city) searchConditions.city = { $regex: new RegExp(city as string, "i") };
+        if (status) searchConditions.status = status;
+        if (type) searchConditions.type = type;
+        if (category) searchConditions.category = { $regex: new RegExp(category as string, "i") };
+
+        // Perform the search using the conditions
+        const properties = await propertyRepository.find({
+            where: searchConditions
+        });
+
+        if (properties.length === 0) {
+            res.status(404).json({ message: 'No properties found matching the search criteria' });
+            return;
+        }
+
+        res.status(200).json({
+            message: 'Properties retrieved successfully',
+            properties,
+        });
+    } catch (error) {
+        console.error('Error searching properties:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+export {createProperty,getAllProperties,getPropertyById,updateProperty,deleteProperty,SearchController};
