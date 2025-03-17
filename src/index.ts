@@ -31,7 +31,7 @@ app.use("/bookings", bookingRouter);
 app.use("/transactions", transactionRouter);
 app.use("/notifications", notificationRouter);
 app.use("/reviews", reviewRouter);
-
+/*
 app.delete("/files", (req: Request, res: Response): void => {
     try {
       const { files } = req.body;
@@ -50,6 +50,6 @@ app.delete("/files", (req: Request, res: Response): void => {
     }
   });
 app.use("/uploads", express.static("uploads"));
-
+*/
 const PORT = 5000; 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

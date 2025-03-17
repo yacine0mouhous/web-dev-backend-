@@ -21,10 +21,12 @@ const createProperty = async (req: Request, res: Response): Promise<void> => {
             sellPrice,
             rentPrice,
             leaseTerm,
-            roomCount
+            roomCount,
         } = req.body;
+ 
         const images = req.files as Express.Multer.File[];
         const ownerId = req.body.ownerId;
+        console.log(ObjectId.isValid(ownerId));
         
         if (!ownerId || !ObjectId.isValid(ownerId)) {
             res.status(401).json({ message: 'Unauthorized: Invalid ownerId' });
