@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AppDataSource } from "../config/data-source";
+import { AppDataSource,  } from "../config/data-source";
 import jwt from 'jsonwebtoken';
 import { Property } from "../models/PropertyModel";
 import { ObjectId } from "mongodb";
@@ -166,22 +166,32 @@ const getAllProperties = async (req: Request, res: Response): Promise<void> => {
 const getPropertyById = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        
-        // 1. Check if the provided ID is valid
+
         if (!ObjectId.isValid(id)) {
             res.status(400).json({ message: 'Invalid property ID' });
             return;
         }
-
-        // 2. Query the database to fetch the property by ID
+/*
+        // Check Redis Cache (String Data Structure)
+        const cachedProperty = await redisClient.get(`property:${id}`);
+        if (cachedProperty) {
+            console.log('cache hit');
+            res.status(200).json({ message: 'Property retrieved from cache', property: JSON.parse(cachedProperty) });
+            return;
+        }
+        console.log('cache miss');
+        // Fetch from MongoDB if not in cache
+        */
         const property = await propertyRepository.findOneBy({ _id: new ObjectId(id) });
 
         if (!property) {
             res.status(404).json({ message: 'Property not found' });
             return;
         }
-
-        // 3. Return the property as the response
+/*
+        // Cache the property as a Redis String (Expire in 1 hour)
+        await redisClient.setEx(`property:${id}`, 3600, JSON.stringify(property));
+*/
         res.status(200).json({ message: 'Property retrieved successfully', property });
     } catch (error) {
         console.error('Error retrieving property:', error);
@@ -191,12 +201,25 @@ const getPropertyById = async (req: Request, res: Response): Promise<void> => {
 
 const SearchController = async (req: Request, res: Response): Promise<void> => {
     try {
-        const {  country, state, city, status, type, category } = req.query;
+        const { country, state, city, status, type, category } = req.query;
+/*
+        // Store search in Redis history
+        await redisClient.lPush("search_history", JSON.stringify(req.query));
+        await redisClient.lTrim("search_history", 0, 99); // Keep last 100 searches
 
-        // Create search conditions based on the query parameters
+        // Generate a unique cache key for search results
+        const cacheKey = `search:${JSON.stringify(req.query)}`;
+
+        // Check cache first
+        const cachedResults = await redisClient.get(cacheKey);
+        if (cachedResults) {
+            console.log('cache hit');
+            res.status(200).json({ message: 'Properties retrieved from cache', properties: JSON.parse(cachedResults) });
+            return;
+        }
+console.log('cache miss');*/
+        // Search conditions
         const searchConditions: any = {};
-
-    
         if (country) searchConditions.country = { $regex: new RegExp(country as string, "i") };
         if (state) searchConditions.state = { $regex: new RegExp(state as string, "i") };
         if (city) searchConditions.city = { $regex: new RegExp(city as string, "i") };
@@ -204,23 +227,23 @@ const SearchController = async (req: Request, res: Response): Promise<void> => {
         if (type) searchConditions.type = type;
         if (category) searchConditions.category = { $regex: new RegExp(category as string, "i") };
 
-        // Perform the search using the conditions
-        const properties = await propertyRepository.find({
-            where: searchConditions
-        });
+        // Fetch from DB
+        const properties = await propertyRepository.find({ where: searchConditions });
 
         if (properties.length === 0) {
             res.status(404).json({ message: 'No properties found matching the search criteria' });
             return;
         }
-
-        res.status(200).json({
-            message: 'Properties retrieved successfully',
-            properties,
-        });
+/*
+        // Cache the results
+        await redisClient.setEx(cacheKey, 1800, JSON.stringify(properties));
+*/
+        res.status(200).json({ message: 'Properties retrieved successfully', properties });
     } catch (error) {
         console.error('Error searching properties:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+
 export {createProperty,getAllProperties,getPropertyById,updateProperty,deleteProperty,SearchController};

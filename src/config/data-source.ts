@@ -10,6 +10,7 @@ import { Review } from "../models/ReviewModel";
 import { Notification } from "../models/NotificationModel";
 import { MaintenanceRequest } from "../models/MaintenanceRequestModel";
 import { createClient } from "redis"; // Import redis client
+import { Conversation } from "../models/conversationModel";
 
 dotenv.config();
 
@@ -22,10 +23,10 @@ export const AppDataSource = new DataSource({
     synchronize: true,
     logging: false,
     entities: [
-        User, Transaction, Property, Booking, Lease, Review, Notification, MaintenanceRequest
+        User, Transaction, Property, Booking, Lease, Review, Notification, MaintenanceRequest , Conversation
     ], // Add all entities here
 });
-
+/*
 // Redis client initialization
 export const redisClient = createClient({
     url: process.env.REDIS_URL || 'redis://localhost:6379', // Adjust the Redis URL if necessary
@@ -40,12 +41,12 @@ const connectRedis = async () => {
         console.error("Error connecting to Redis:", error);
     }
 };
-
+*/
 // Initialize MongoDB connection and Redis connection
 AppDataSource.initialize()
     .then(() => {
         console.log("Connected to MongoDB!");
-        connectRedis(); // Connect to Redis after MongoDB is connected
+      /*  connectRedis(); // Connect to Redis after MongoDB is connected*/
     })
     .catch((error) => {
         console.error("Error connecting to MongoDB:", error);

@@ -14,13 +14,24 @@ import transactionRouter from "./routes/transactionRouter";
 import notificationRouter from "./routes/notificationRouter";
 import reviewRouter from "./routes/reviewRouter";
 import deleteFiles from "./utils/filesUtils";
+import conversationRouter from "./routes/conversationRouter";
 import path from "path";
+import { Conversation } from "./models/conversationModel";
+import { Server } from "socket.io";
+import { AppDataSource } from "./config/data-source"; // Ensure correct import
+import http from "http";
+import { ObjectId } from "mongodb";
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
-// Swagger configuration for development
+app.use(cors());
+app.use(express.json());
+
+// Swagger configuration
 const options: swaggerJsdoc.Options = {
   swaggerDefinition: {
     openapi: '3.0.0',
@@ -30,21 +41,10 @@ const options: swaggerJsdoc.Options = {
       description: 'API documentation for my app',
     },
   },
-  apis: [path.join(__dirname, './routes/**/*.ts')], // Use __dirname for an absolute path
-
- // Path to all route files for development (TypeScript files)
-// Path to all route files for development (TypeScript files)
+  apis: [path.join(__dirname, './routes/**/*.ts')],
 };
-
 const swaggerDocs = swaggerJsdoc(options);
-console.log(swaggerDocs); // Check if Swagger is picking up routes
-
-
-// Set up Swagger UI at /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-app.use(cors());
-app.use(express.json());
 
 // Route setups
 app.use(authRouter);
@@ -56,31 +56,81 @@ app.use("/bookings", bookingRouter);
 app.use("/transactions", transactionRouter);
 app.use("/notifications", notificationRouter);
 app.use("/reviews", reviewRouter);
+app.use("/messages", conversationRouter);
 
-// Uncomment if needed in development for deleting files
-/*
-app.delete("/files", (req: Request, res: Response): void => {
+// Start database connection
+AppDataSource.initialize()
+  .then(() => {
+    console.log("Connected to MongoDB!");
+// connect and join a room event                         
+    io.on("connection", (socket) => {
+      console.log("User connected:", socket.id);
+
+      socket.on("joinRoom", (conversationId) => {
+        socket.join(conversationId);
+      });
+
+
+
+// event of sending message 
+
+
+socket.on("sendMessage", async (data) => {
   try {
-    const { files } = req.body;
-    if (!files || !Array.isArray(files)) {
-      res.status(400).json({ error: "Invalid request. 'files' should be an array." });
-      return;
+    // In a real app, senderId should be extracted from the token
+    const { senderId, receiverId, content } = data;
+    
+    const conversationRepo = AppDataSource.getMongoRepository(Conversation);
+
+    const senderObjectId = new ObjectId(senderId);
+    const receiverObjectId = new ObjectId(receiverId);
+
+    // Check if conversation exists
+    let conversation = await conversationRepo.findOne({
+      where: { participants: { $all: [senderObjectId, receiverObjectId] } },
+    });
+
+    if (!conversation) {
+      console.log("Creating new conversation");
+      conversation = await conversationRepo.save({
+        participants: [senderObjectId, receiverObjectId], // Ensure IDs are ObjectId
+        messages: [],
+      });
     }
-    const filePaths = files.map((file: { path: string }) => file.path);
-    if (!filePaths.length) {
-      res.status(400).json({ error: "No file paths provided." });
-      return;
-    }
-    deleteFiles(filePaths);
-    res.status(200).json({ message: "Files deleted successfully." });
+
+    console.log(conversation.id);
+
+    // Create new message
+    const newMessage = {
+      senderId: senderObjectId,
+      receiverId: receiverObjectId,
+      content,
+      createdAt: new Date(),
+    };
+
+    // Add message to conversation and save
+    conversation.messages.push(newMessage);
+    await conversationRepo.save(conversation);
+    console.log("Saved to DB");
+
+    // Emit the message to the conversation room
+    io.to(conversation.id.toString()).emit("receiveMessage", newMessage);
   } catch (error) {
-    console.error("Error deleting files:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error sending message:", error);
   }
 });
-*/
 
-app.use("/uploads", express.static("uploads"));
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+      // disconnet from the scket 
+      socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+      });
+    });
+
+    const PORT = 5000;
+    server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+  })
+  .catch((error: any) => {
+    console.error("Error connecting to MongoDB:", error);
+  });
