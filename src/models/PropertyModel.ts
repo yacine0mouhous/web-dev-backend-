@@ -14,8 +14,10 @@ export class Property {
 
   @Column()
   country?: string;
+
   @Column()
   state?: string;
+
   @Column()
   city?: string;
 
@@ -26,10 +28,10 @@ export class Property {
   images?: string[];
 
   @Column()
-  status?: "available" | "rented" | "sold" | "inactive";
+  status?: "available" | "rented" | "sold" | "inactive"; // maps to homeStatus
 
   @Column()
-  type?: "real_estate" | "rented_real_estate" | "hotel";
+  type?: "real_estate" | "rented_real_estate" | "hotel"; // maps to homeType
 
   @Column()
   category?: string;
@@ -44,7 +46,22 @@ export class Property {
   leaseTerm?: "short-term" | "long-term";
 
   @Column({ nullable: true })
-  roomCount?: number;
+  roomCount?: number; // could be mapped to bedrooms
+
+  @Column({ nullable: true })
+  bathrooms?: number;
+
+  @Column({ nullable: true })
+  bedrooms?: number;
+
+  @Column({ nullable: true })
+  yearBuilt?: number;
+
+  @Column({ nullable: true })
+  livingAreaSqft?: number; // matches "livingArea in sqft"
+
+  @Column({ nullable: true })
+  propertyTaxRate?: number;
 
   @CreateDateColumn()
   createdAt?: Date;
@@ -63,5 +80,6 @@ export class Property {
 
   @Column("array", { default: [] })
   bookingIds?: ObjectId[];
-    static findOne: any;
+
+  static findOne: any;
 }

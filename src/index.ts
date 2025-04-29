@@ -128,7 +128,7 @@ socket.on("sendMessage", async (data) => {
       });
     });
 
-    const PORT = 5000;
+    const PORT = 8000;
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   })
   .catch((error: any) => {

@@ -5,8 +5,12 @@ import { Property } from "../models/PropertyModel";
 import { ObjectId } from "mongodb";
 import { deleteUserProperty, updateUserProperties } from "../utils/userUtils";
 import dotenv from "dotenv";
+import axios from "axios";
 const propertyRepository = AppDataSource.getMongoRepository(Property);
 dotenv.config();
+
+
+
 
 const createProperty = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -23,12 +27,16 @@ const createProperty = async (req: Request, res: Response): Promise<void> => {
             rentPrice,
             leaseTerm,
             roomCount,
+            bathrooms,
+            bedrooms,
+            yearBuilt,
+            livingAreaSqft,
+            propertyTaxRate,
+            ownerId,
         } = req.body;
- 
+
         const images = req.files as Express.Multer.File[];
-        const ownerId = req.body.ownerId;
-        console.log(ObjectId.isValid(ownerId));
-        
+
         if (!ownerId || !ObjectId.isValid(ownerId)) {
             res.status(401).json({ message: 'Unauthorized: Invalid ownerId' });
             return;
@@ -39,7 +47,7 @@ const createProperty = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const imagePaths = images.map((file) => file.path);
+        const imagePaths = images?.map((file) => file.path) || [];
 
         const property = propertyRepository.create({
             name,
@@ -56,15 +64,20 @@ const createProperty = async (req: Request, res: Response): Promise<void> => {
             rentPrice: rentPrice || null,
             leaseTerm: leaseTerm || null,
             roomCount: roomCount || null,
+            bathrooms: bathrooms || null,
+            bedrooms: bedrooms || null,
+            yearBuilt: yearBuilt || null,
+            livingAreaSqft: livingAreaSqft || null,
+            propertyTaxRate: propertyTaxRate || null,
             transactionIds: [],
             maintenanceRequestIds: [],
             leaseIds: [],
             bookingIds: [],
         });
-    
+
         const savedProperty = await propertyRepository.save(property);
-        console.log(savedProperty);
         await updateUserProperties(savedProperty.ownerId!, savedProperty.id);
+
         res.status(201).json({ message: 'Property created successfully', property: savedProperty });
     } catch (error) {
         console.error('Error creating property:', error);
@@ -245,5 +258,59 @@ console.log('cache miss');*/
     }
 };
 
+const predictPrice = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Extracting the data from the request body
+        const {
+            homeStatus,
+            homeType,
+            city,
+            state,
+            yearBuilt,
+            livingAreaSqft,
+            bathrooms,
+            bedrooms,
+            propertyTaxRate
+        } = req.body;
 
-export {createProperty,getAllProperties,getPropertyById,updateProperty,deleteProperty,SearchController};
+        // Check if all required parameters are provided
+        if (
+            !homeStatus || !homeType || !city || !state || !yearBuilt ||
+            !livingAreaSqft || !bathrooms || !bedrooms || !propertyTaxRate
+        ) {
+            res.status(400).json({ message: "Missing required parameters" });
+            return;
+        }
+
+        // Prepare the payload for the Flask API request
+        const payload = {
+            homeStatus: Number(homeStatus),
+            homeType: Number(homeType),
+            city: Number(city),
+            state: Number(state),
+            yearBuilt: Number(yearBuilt),
+            "livingArea in sqft": Number(livingAreaSqft),
+            bathrooms: Number(bathrooms),
+            bedrooms: Number(bedrooms),
+            propertyTaxRate: Number(propertyTaxRate)
+        };
+
+        // Sending request to Flask server for prediction
+        const response = await axios.post("http://127.0.0.1:5000/predict", payload);
+
+        // Returning the prediction result
+        res.status(200).json({
+            message: "Prediction successful",
+            result: response.data
+        });
+    } catch (error: any) {
+        // Handling errors
+        console.error("Prediction error:", error.message);
+        res.status(500).json({
+            message: "Error during prediction",
+            error: error.message
+        });
+    }
+};
+
+export {createProperty,getAllProperties,getPropertyById,updateProperty,deleteProperty,SearchController,predictPrice};
